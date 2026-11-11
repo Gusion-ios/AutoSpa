@@ -1,122 +1,81 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { DashboardLayout } from './layouts/DashboardLayout.jsx'
+import { TableroPage } from './features/tablero/TableroPage.jsx'
+import { RecepcionPage } from './features/recepcion/RecepcionPage.jsx'
+import { SeguimientoPage } from './features/seguimiento/SeguimientoPage.jsx'
+import { CatalogoPage } from './features/catalogo/CatalogoPage.jsx'
+import { CajaPage } from './features/caja/CajaPage.jsx'
+import { ReportePage } from './features/reporte/ReportePage.jsx'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const initialServices = [
+  { id: 1, name: 'Lavado completo', price: 45, duration: 45 },
+  { id: 2, name: 'Lavado premium', price: 70, duration: 60 },
+  { id: 3, name: 'Encerado', price: 95, duration: 90 },
+  { id: 4, name: 'Limpieza interior', price: 60, duration: 60 },
+]
+
+const initialVehicles = [
+  { id: 1, time: '09:00', client: 'María García', phone: '999 123 456', plate: 'ABC-123', vehicle: 'Toyota Corolla', service: 'Lavado premium', status: 'En proceso', paid: false },
+  { id: 2, time: '10:30', client: 'Carlos Mendoza', phone: '988 234 567', plate: 'BCD-234', vehicle: 'Honda Civic', service: 'Lavado completo', status: 'Pendiente', paid: false },
+  { id: 3, time: '11:00', client: 'Lucía Torres', phone: '977 345 678', plate: 'CDE-345', vehicle: 'Mazda CX-5', service: 'Encerado', status: 'Pendiente', paid: false },
+]
+
+export default function App() {
+  const [activePage, setActivePage] = useState('Tablero')
+  const [services, setServices] = useState(initialServices)
+  const [vehicles, setVehicles] = useState(initialVehicles)
+
+  function registerVehicle(vehicle) {
+    setVehicles((current) => [
+      {
+        ...vehicle,
+        id: Date.now(),
+        time: new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }),
+        status: 'Pendiente',
+        paid: false,
+      },
+      ...current,
+    ])
+  }
+
+  function updateStatus(id, status) {
+    setVehicles((current) => current.map((vehicle) => vehicle.id === id ? { ...vehicle, status } : vehicle))
+  }
+
+  function markPaid(id) {
+    setVehicles((current) => current.map((vehicle) => vehicle.id === id ? { ...vehicle, paid: true } : vehicle))
+  }
+
+  function addService(service) {
+    setServices((current) => [{ ...service, id: Date.now() }, ...current])
+  }
+
+  let page
+  switch (activePage) {
+    case 'Recepción':
+      page = <RecepcionPage vehicles={vehicles} services={services} onRegister={registerVehicle} />
+      break
+    case 'Seguimiento':
+      page = <SeguimientoPage vehicles={vehicles} onUpdateStatus={updateStatus} />
+      break
+    case 'Catálogo':
+      page = <CatalogoPage services={services} onAddService={addService} />
+      break
+    case 'Caja':
+      page = <CajaPage vehicles={vehicles} services={services} onMarkPaid={markPaid} />
+      break
+    case 'Reportes':
+      page = <ReportePage vehicles={vehicles} services={services} />
+      break
+    default:
+      page = <TableroPage vehicles={vehicles} services={services} onGoToReception={() => setActivePage('Recepción')} />
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <DashboardLayout activePage={activePage} onNavigate={setActivePage}>
+      {page}
+    </DashboardLayout>
   )
 }
 
-export default App
