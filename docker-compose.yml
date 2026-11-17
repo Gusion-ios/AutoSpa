@@ -1,0 +1,95 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: autospa_compose
+      POSTGRES_USER: autospa_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env.docker}
+    volumes:
+      - autospa_compose_data:/var/lib/postgresql
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/autospa_compose
+      SPRING_DATASOURCE_USERNAME: autospa_app
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env.docker}
+      AUTOSPA_JWT_SECRET: ${AUTOSPA_JWT_SECRET:?Define AUTOSPA_JWT_SECRET en .env.docker}
+      AUTOSPA_GATEWAY_SECRET: ${AUTOSPA_GATEWAY_SECRET:?Define AUTOSPA_GATEWAY_SECRET en .env.docker}
+      AUTOSPA_SUPERADMIN_EMAIL: ${AUTOSPA_SUPERADMIN_EMAIL:?Define AUTOSPA_SUPERADMIN_EMAIL en .env.docker}
+      AUTOSPA_SUPERADMIN_PASSWORD: ${AUTOSPA_SUPERADMIN_PASSWORD:?Define AUTOSPA_SUPERADMIN_PASSWORD en .env.docker}
+      AUTOSPA_SUPERADMIN_NAME: ${AUTOSPA_SUPERADMIN_NAME:-Administrador Supremo}
+      AUTOSPA_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://${LAN_IP:?Define LAN_IP en .env.docker}:5173
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8081"
+    networks:
+      - app
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: ./gateway
+    environment:
+      AUTOSPA_BACKEND_URL: http://backend:8081
+      AUTOSPA_GATEWAY_SECRET: ${AUTOSPA_GATEWAY_SECRET:?Define AUTOSPA_GATEWAY_SECRET en .env.docker}
+      AUTOSPA_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://${LAN_IP:?Define LAN_IP en .env.docker}:5173
+      GATEWAY_MODE: ${GATEWAY_MODE:-monitor}
+      GATEWAY_RATE_LIMIT_PER_MINUTE: ${GATEWAY_RATE_LIMIT_PER_MINUTE:-120}
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "8080:8080"
+    networks:
+      - edge
+      - app
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_URL: http://${LAN_IP:?Define LAN_IP en .env.docker}:8080/api
+        VITE_PUBLIC_APP_URL: http://${LAN_IP:?Define LAN_IP en .env.docker}:5173/
+    ports:
+      - "5173:80"
+    depends_on:
+      gateway:
+        condition: service_started
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  edge:
+  app:
+    internal: true
+
+volumes:
+  autospa_compose_data:

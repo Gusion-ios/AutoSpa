@@ -18,9 +18,10 @@ Usa esta lista antes de la demostración. Marca una casilla solo después de com
 
 ## Seguridad, resiliencia y entrega
 
-- [ ] Probar rate limit, bloqueo temporal y reglas de detección del Gateway con el script controlado.
-- [ ] Crear un backup de la base de datos y restaurarlo; anotar RPO y RTO medidos.
+- [x] Probar rate limit, bloqueo temporal y reglas de detección del Gateway con solicitudes controladas.
+- [ ] Crear un backup de la base de datos y restaurarlo; anotar RPO y RTO medidos (restauración probada; medir RPO/RTO después).
 - [ ] Probar rollback y medir que se complete en menos de cinco minutos.
-- [ ] Verificar el inicio del sistema desde cero con el procedimiento oficial del equipo.
-- [ ] Confirmar que no se versionaron secretos.
-- [ ] Completar despliegue/alternativa local documentada, informe, diagramas C4 y guion de demo.
+- [x] Verificar el inicio del sistema con Docker Compose, acceso web y persistencia tras reiniciar servicios.
+- [x] Confirmar que `.env.docker` está ignorado por Git y que no se versionaron sus secretos.
+- [x] Documentar el despliegue local con Docker Compose y los comandos de operación en `README.md`.
+- [ ] Completar informe, diagramas C4 y guion de demo.

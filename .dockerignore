@@ -1,0 +1,14 @@
+.git
+.idea
+node_modules
+dist
+dist-ssr
+backend
+gateway
+docs
+backups
+.env
+.env.*
+!.env.docker.example
+*.local
+*.log
