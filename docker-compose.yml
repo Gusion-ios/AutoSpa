@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: autospa_compose
       POSTGRES_USER: autospa_app
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env.docker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en el archivo de entorno}
     volumes:
       - autospa_compose_data:/var/lib/postgresql
     networks:
@@ -16,6 +16,31 @@ services:
       retries: 12
     restart: unless-stopped
 
+  backup:
+    build:
+      context: ./resiliencia
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: autospa_compose
+      PGUSER: autospa_app
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en el archivo de entorno}
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      BACKUP_WEEKLY_RETENTION_DAYS: ${BACKUP_WEEKLY_RETENTION_DAYS:-28}
+      AZURE_BLOB_CONTAINER_URL: ${AZURE_BLOB_CONTAINER_URL:-}
+      AZURE_BLOB_SAS_TOKEN: ${AZURE_BLOB_SAS_TOKEN:-}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app
+      - backup_egress
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -24,13 +49,13 @@ services:
       SERVER_PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/autospa_compose
       SPRING_DATASOURCE_USERNAME: autospa_app
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env.docker}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en el archivo de entorno}
       AUTOSPA_JWT_SECRET: ${AUTOSPA_JWT_SECRET:?Define AUTOSPA_JWT_SECRET en .env.docker}
       AUTOSPA_GATEWAY_SECRET: ${AUTOSPA_GATEWAY_SECRET:?Define AUTOSPA_GATEWAY_SECRET en .env.docker}
       AUTOSPA_SUPERADMIN_EMAIL: ${AUTOSPA_SUPERADMIN_EMAIL:?Define AUTOSPA_SUPERADMIN_EMAIL en .env.docker}
       AUTOSPA_SUPERADMIN_PASSWORD: ${AUTOSPA_SUPERADMIN_PASSWORD:?Define AUTOSPA_SUPERADMIN_PASSWORD en .env.docker}
       AUTOSPA_SUPERADMIN_NAME: ${AUTOSPA_SUPERADMIN_NAME:-Administrador Supremo}
-      AUTOSPA_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://${LAN_IP:?Define LAN_IP en .env.docker}:5173
+      AUTOSPA_CORS_ALLOWED_ORIGINS: ${AUTOSPA_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://${LAN_IP:-127.0.0.1}:5173}
     depends_on:
       db:
         condition: service_healthy
@@ -46,14 +71,14 @@ services:
     environment:
       AUTOSPA_BACKEND_URL: http://backend:8081
       AUTOSPA_GATEWAY_SECRET: ${AUTOSPA_GATEWAY_SECRET:?Define AUTOSPA_GATEWAY_SECRET en .env.docker}
-      AUTOSPA_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://${LAN_IP:?Define LAN_IP en .env.docker}:5173
+      AUTOSPA_CORS_ALLOWED_ORIGINS: ${AUTOSPA_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://${LAN_IP:-127.0.0.1}:5173}
       GATEWAY_MODE: ${GATEWAY_MODE:-monitor}
       GATEWAY_RATE_LIMIT_PER_MINUTE: ${GATEWAY_RATE_LIMIT_PER_MINUTE:-120}
     depends_on:
       backend:
         condition: service_started
     ports:
-      - "8080:8080"
+      - "${GATEWAY_BIND:-0.0.0.0}:8080:8080"
     networks:
       - edge
       - app
@@ -69,10 +94,10 @@ services:
     build:
       context: .
       args:
-        VITE_API_URL: http://${LAN_IP:?Define LAN_IP en .env.docker}:8080/api
-        VITE_PUBLIC_APP_URL: http://${LAN_IP:?Define LAN_IP en .env.docker}:5173/
+        VITE_API_URL: ${VITE_API_URL:-http://${LAN_IP:-127.0.0.1}:8080/api}
+        VITE_PUBLIC_APP_URL: ${VITE_PUBLIC_APP_URL:-http://${LAN_IP:-127.0.0.1}:5173/}
     ports:
-      - "5173:80"
+      - "${FRONTEND_BIND:-0.0.0.0}:5173:80"
     depends_on:
       gateway:
         condition: service_started
@@ -86,10 +111,33 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  caddy:
+    image: caddy:2-alpine
+    profiles: [production]
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-autospa.invalid}
+      CADDY_EMAIL: ${CADDY_EMAIL:-admin@example.invalid}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - gateway
+    networks:
+      - edge
+    restart: unless-stopped
+
 networks:
   edge:
   app:
     internal: true
+  backup_egress:
 
 volumes:
   autospa_compose_data:
+  caddy_data:
+  caddy_config:

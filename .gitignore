@@ -28,3 +28,4 @@ __pycache__/
 
 /backups/
 .env.docker
+.env.production
