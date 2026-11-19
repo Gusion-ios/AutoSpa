@@ -9,6 +9,8 @@ import {
   UserRoundPlus,
   UsersRound,
   QrCode,
+  Menu,
+  X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { ShareDeviceDialog } from '../components/ShareDeviceDialog.jsx'
@@ -42,6 +44,7 @@ export function DashboardLayout({
                                   children,
                                 }) {
   const [showShareDialog, setShowShareDialog] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const today = new Intl.DateTimeFormat('es-PE', {
     weekday: 'long',
     day: 'numeric',
@@ -49,8 +52,16 @@ export function DashboardLayout({
   }).format(new Date())
 
   return (
-      <div className="app">
-        <aside className="sidebar">
+      <div className={`app ${mobileMenuOpen ? 'mobile-menu-open' : ''}`}>
+        {mobileMenuOpen && (
+          <button
+            className="mobile-nav-backdrop"
+            type="button"
+            aria-label="Cerrar menú"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+        <aside className="sidebar" id="main-navigation">
           <a
               className="brand"
               href="#tablero"
@@ -74,7 +85,10 @@ export function DashboardLayout({
                     className={`nav-item ${activePage === label ? 'active' : ''}`}
                     key={label}
                     type="button"
-                    onClick={() => onNavigate(label)}
+                    onClick={() => {
+                      onNavigate(label)
+                      setMobileMenuOpen(false)
+                    }}
                     aria-current={activePage === label ? 'page' : undefined}
                 >
                   <Icon size={18} strokeWidth={1.8} />
@@ -91,9 +105,21 @@ export function DashboardLayout({
 
         <main className="main">
           <header className="topbar">
-            <div>
+            <div className="page-title">
+              <button
+                className="mobile-menu-toggle"
+                type="button"
+                aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="main-navigation"
+                onClick={() => setMobileMenuOpen((open) => !open)}
+              >
+                {mobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
+              </button>
+              <div>
               <span className="eyebrow">{today}</span>
               <h1>{activePage}</h1>
+              </div>
             </div>
 
             <div className="topbar-actions">
